@@ -1,30 +1,47 @@
 #pragma once
-#include "main.hpp"
 
-class Apple;
+#include <vector>
+
+#include "Common.hpp"
+#include "Apple.hpp"
 
 class Snake
 {
+friend class TextureManager;
+
 private:
-    point *body{};
-    point direction;
-    uint16_t length;
-    void drawSnakeAngle(Texture2D angleTexture, point prev, point curr, point next);
-    void drawTail(Texture2D texture, point prev, point curr);
-    void drawBodyPart(Texture2D texture, Texture2D angleTexture, point prev, point curr, point next);
-    void drawHead(Texture2D headTexture);
+    static Texture2D sTextureBody;
+    static Texture2D sTextureHead;
+    static Texture2D sTextureCorner;
+    static Texture2D sTextureTail;
+
+public:
+    enum Direction
+    {
+        UP, DOWN, LEFT, RIGHT
+    };
+
+private:
+    std::vector<point> mBody;
+    Direction mDirection;
+
+    point directionVector() const;
+    float directionAngle() const;
     
 public:
-    Snake(point head, point direction);
-    ~Snake();
-    void grow(point p);
-    void draw(Texture2D texture, Texture2D headTexture, Texture2D angleTexture, Texture2D tailTexture);
-    void setDirection(point p);
+    Snake();
+
+    const Direction &direction() const { return mDirection; }
+    Direction &direction() { return mDirection; }
+    const point &head() const;
+    const point &tail() const;
+
+    void reset();
+    void grow(const point &p);
+    void handleInput(int key);
     void update();
-    void changeDirection(point p);
-    point getHead();
-    point getTail();
-    bool hasToEatApple(Apple *apple);
-    bool isSelfCollided();
-    void eat(Apple *apple);
+    void draw() const;
+    bool isSelfCollided() const;
+    bool hasToEatApple(const Apple &apple) const;
+    void eat(Apple &apple);
 };

@@ -1,5 +1,6 @@
 #pragma once
-#include "main.hpp"
+
+#include "Common.hpp"
 
 enum menuItem
 {

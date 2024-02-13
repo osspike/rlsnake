@@ -1,15 +1,22 @@
 #pragma once
-#include "main.hpp"
+
+#include "Common.hpp"
 
 class Apple
 {
+friend class TextureManager;
+
 private:
+    static Texture sTexture;
+
+    point mPos;
+
 public:
-  int16_t x;
-  int16_t y;
-  Apple(point position);
-  ~Apple();
-  void remove();
-  point getPosition();
-  void draw(Texture2D texture);
+    Apple();
+
+    const point &position() const { return mPos; }
+
+    void reposition(const walls_t &walls);
+    void reset();
+    void draw() const;
 };

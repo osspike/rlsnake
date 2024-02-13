@@ -1,13 +1,21 @@
 #pragma once
-#include "main.hpp"
+
+#include "Common.hpp"
 
 class Level
 {
+friend class TextureManager;
+
 private:
-    int wallsCount{};
+    static Texture2D sTextureWall;
+    static Texture2D sTextureGround;
+
+    walls_t mWalls;
+
 public:
-    bool walls[50][30]{};
-    Level(char *filePath);
-    ~Level();
-    void draw(Texture2D wallTexture);
+    Level();
+
+    bool loadFromFile(const char *filePath);
+    const walls_t &walls() const { return mWalls; }
+    void draw() const;
 };

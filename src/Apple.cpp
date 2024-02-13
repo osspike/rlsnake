@@ -1,30 +1,29 @@
 #include "Apple.hpp"
 
-Apple::Apple(point position)
+Texture Apple::sTexture = {};
+
+Apple::Apple()
 {
-  this->x = position.x;
-  this->y = position.y;
+    reset();
 }
 
-Apple::~Apple()
+void Apple::reset()
 {
+    mPos.x = -1;
+    mPos.y = -1;
 }
 
-point Apple::getPosition()
+void Apple::reposition(const walls_t &walls)
 {
-  return point{this->x, this->y};
+    do {
+        mPos.x = GetRandomValue(0, levelWidth);
+        mPos.y = GetRandomValue(0, levelHeight);
+    } while (walls[mPos.x][mPos.y]);
 }
 
-void Apple::remove()
+void Apple::draw() const
 {
-  this->x = -1;
-  this->y = -1;
-}
-
-void Apple::draw(Texture2D texture)
-{
-  if (isOnScreen(this->getPosition()))
-  {
-    DrawTexture(texture, this->x * 16, this->y * 16, WHITE);
-  }
+    if (isOnLevel(mPos)) {
+        DrawTexture(sTexture, mPos.x * tileSize, mPos.y * tileSize, WHITE);
+    }
 }

@@ -1,300 +1,178 @@
 #include "Snake.hpp"
-#include <cstdlib>
-#include <iostream>
 
-Snake::Snake(point head, point direction)
+#include <stdlib.h>
+
+Texture2D Snake::sTextureBody   = {};
+Texture2D Snake::sTextureHead   = {};
+Texture2D Snake::sTextureCorner = {};
+Texture2D Snake::sTextureTail   = {};
+
+void drawTile(const Texture2D &tex, const point &pos, float rot)
 {
-    this->length = 0;
-    this->grow(head);
-    this->direction = direction;
+    Vector2 origin = {tex.width / 2.0f, tex.height / 2.0f};
+    Rectangle src =  {0.0f, 0.0f, float(tex.width), float(tex.height)};
+    Rectangle dest = {float(pos.x * tileSize) + origin.x, float(pos.y * tileSize) + origin.y, float(tex.width), float(tex.height)};
+    DrawTexturePro(tex, src, dest, origin, rot, WHITE);
 }
 
-Snake::~Snake()
+Snake::Snake()
 {
-    std::free(this->body);
+    reset();
 }
 
-void Snake::grow(point p)
+void Snake::reset()
 {
-    point *a = (point *)std::realloc(this->body, sizeof(*this->body) * (this->length + 1));
-    if (a)
-    {
-        this->body = a;
-        this->body[this->length++] = p;
-    }
+    mDirection = RIGHT;
+    mBody.clear();
+    grow(point{4, 1});
+    grow(point{3, 1});
+    grow(point{2, 1});
 }
 
-void Snake::draw(Texture2D texture, Texture2D headTexture, Texture2D angleTexture, Texture2D tailTexture)
+void Snake::grow(const point &p)
 {
-    auto previousPoint = this->body[0];
-    for (int i = 1; i < this->length; ++i)
-    {
-        if (i == this->length - 1)
-        {
-            this->drawTail(tailTexture, previousPoint, this->body[i]);
-        }
-        else
-        {
-            const auto nextPoint = this->body[i + 1];
-            this->drawBodyPart(texture, angleTexture, previousPoint, this->body[i], nextPoint);
-        }
-        previousPoint = this->body[i];
-    }
-
-    this->drawHead(headTexture);
+    mBody.push_back(p);
 }
 
-void Snake::drawBodyPart(Texture2D texture, Texture2D angleTexture, point prev, point curr, point next)
+void Snake::handleInput(int key)
 {
-    if (prev.x == next.x)
-    {
-        DrawTextureRotatedInPlace(texture, curr.x, curr.y, 16, 270.0);
-        // DrawTextureEx(texture, Vector2{(float)curr.x * 16, (float)curr.y * 16 + 16}, 270.0, 1.0, WHITE);
-    }
-    else if (prev.y == next.y)
-    {
-        DrawTexture(texture, curr.x * 16, curr.y * 16, WHITE);
-    }
-    else
-    {
-        this->drawSnakeAngle(angleTexture, prev, curr, next);
+    switch (key) {
+    case KEY_DOWN:
+        mDirection = UP;
+        break;
+    case KEY_UP:
+        mDirection = DOWN;
+        break;
+    case KEY_LEFT:
+        mDirection = LEFT;
+        break;
+    case KEY_RIGHT:
+        mDirection = RIGHT;
+        break;
     }
 }
 
-void Snake::drawTail(Texture2D texture, point prev, point curr)
+void Snake::draw() const
 {
-    if (curr.x - prev.x > 1)
-    {
-        point p = {(curr.x + 1), prev.y};
-        this->drawTail(texture, p, curr);
-        return;
-    }
-    if (curr.x - prev.x < -1)
-    {
-        point p = {(curr.x - 1), prev.y};
-        this->drawTail(texture, p, curr);
-        return;
-    }
-    if (curr.y - prev.y > 1)
-    {
-        point p = {prev.x, (curr.y + 1)};
-        this->drawTail(texture, p, curr);
-        return;
-    }
-    if (curr.y - prev.y < -1)
-    {
-        point p = {prev.x, (curr.y - 1)};
-        this->drawTail(texture, p, curr);
-        return;
+    enum Orient { 
+        HOR = 0,
+        VERT = 1
+    } orient = Orient(mDirection == UP || mDirection == DOWN);
+
+    point pos = mBody.front();
+
+    drawTile(sTextureHead, pos, directionAngle());
+
+    point prev = pos;
+    for (size_t i = 1; i < mBody.size() - 1; i++) {
+        pos = mBody[i];
+        switch (orient) {
+            case HOR:
+                if (pos.y != prev.y) {
+                    orient = VERT;
+                }
+                break;
+            case VERT:
+                if (pos.x != prev.x) {
+                    orient = HOR;
+                }
+                break;
+        }
+        prev = pos;
+
+        drawTile(sTextureBody, pos, orient == VERT ? 90.0f : 0.0f);
     }
 
-    if (curr.y - prev.y < 0)
-    {
-        DrawTextureEx(texture, Vector2{(float)curr.x * 16, (float)curr.y * 16 + 16}, 270.0, 1.0, WHITE);
-    }
-    else if (curr.y - prev.y > 0)
-    {
-        DrawTextureEx(texture, Vector2{(float)curr.x * 16 + 16, (float)curr.y * 16}, 90.0, 1.0, WHITE);
-    }
-    else if (curr.x - prev.x < 0)
-    {
-        DrawTextureEx(texture, Vector2{(float)curr.x * 16 + 16, (float)curr.y * 16 + 16}, 180.0, 1.0, WHITE);
-    }
-    else
-    {
-        DrawTexture(texture, curr.x * 16, curr.y * 16, WHITE);
+    if (mBody.size() > 1) {
+        pos = mBody.back();
+        float rot = 0.0f;
+        switch (orient) {
+            case HOR:
+                if (pos.y == prev.y) {
+                    rot = pos.x > prev.x ? 0.0f : 180.0f;
+                } else {
+                    rot = pos.y > prev.y ? 90.0f : 270.0f;
+                }
+                break;
+            case VERT:
+                if (pos.x == prev.x) {
+                    rot = pos.y > prev.y ? 90.0f : 270.0f;
+                } else {
+                    rot = pos.x > prev.x ? 0.0f : 180.0f;
+                }
+                break;
+        }
+
+        drawTile(sTextureTail, pos, rot);
     }
 }
 
-void Snake::drawSnakeAngle(Texture2D angleTexture, point prev, point curr, point next)
+point Snake::directionVector() const
 {
-    if (curr.x - prev.x > 1)
-    {
-        point p = {(curr.x + 1), prev.y};
-        this->drawSnakeAngle(angleTexture, p, curr, next);
-        return;
-    }
-    if (curr.x - prev.x < -1)
-    {
-        point p = {(curr.x - 1), prev.y};
-        this->drawSnakeAngle(angleTexture, p, curr, next);
-        return;
-    }
-    if (curr.y - prev.y > 1)
-    {
-        point p = {prev.x, (curr.y + 1)};
-        this->drawSnakeAngle(angleTexture, p, curr, next);
-        return;
-    }
-    if (curr.y - prev.y < -1)
-    {
-        point p = {prev.x, (curr.y - 1)};
-        this->drawSnakeAngle(angleTexture, p, curr, next);
-        return;
-    }
-
-    if (curr.x - next.x > 1)
-    {
-        point p = {(curr.x + 1), next.y};
-        this->drawSnakeAngle(angleTexture, prev, curr, p);
-        return;
-    }
-    if (curr.x - next.x < -1)
-    {
-        point p = {(curr.x - 1), next.y};
-        this->drawSnakeAngle(angleTexture, prev, curr, p);
-        return;
-    }
-    if (curr.y - next.y > 1)
-    {
-        point p = {next.x, (curr.y + 1)};
-        this->drawSnakeAngle(angleTexture, prev, curr, p);
-        return;
-    }
-    if (curr.y - next.y < -1)
-    {
-        point p = {next.x, (curr.y - 1)};
-        this->drawSnakeAngle(angleTexture, prev, curr, p);
-        return;
-    }
-
-    if (curr.x == next.x)
-    {
-        if (prev.x < next.x && prev.y < next.y)
-        {
-            DrawTextureEx(angleTexture, Vector2{(float)curr.x * 16 + 16, (float)curr.y * 16 + 16}, 180.0, 1.0, WHITE);
-        }
-        else if (prev.x < next.x && prev.y > next.y)
-        {
-            DrawTextureEx(angleTexture, Vector2{(float)curr.x * 16, (float)curr.y * 16 + 16}, 270.0, 1.0, WHITE); // correct
-        }
-        else if (prev.x > next.x && prev.y < next.y)
-        {
-            DrawTextureEx(angleTexture, Vector2{(float)curr.x * 16 + 16, (float)curr.y * 16}, 90.0, 1.0, WHITE); // correct
-        }
-        else
-        {
-            DrawTexture(angleTexture, curr.x * 16, curr.y * 16, WHITE); // correct
-        }
-    }
-    else
-    {
-        if (prev.x < next.x && prev.y < next.y)
-        {
-            DrawTexture(angleTexture, curr.x * 16, curr.y * 16, WHITE); // correct
-        }
-        else if (prev.x < next.x && prev.y > next.y)
-        {
-            DrawTextureEx(angleTexture, Vector2{(float)curr.x * 16 + 16, (float)curr.y * 16}, 90.0, 1.0, WHITE); // correct
-        }
-        else if (prev.x > next.x && prev.y < next.y)
-        {
-            DrawTextureEx(angleTexture, Vector2{(float)curr.x * 16, (float)curr.y * 16 + 16}, 270.0, 1.0, WHITE); // correct
-        }
-        else
-        {
-            DrawTextureEx(angleTexture, Vector2{(float)curr.x * 16 + 16, (float)curr.y * 16 + 16}, 180.0, 1.0, WHITE); // correct
-        }
+    switch (mDirection) {
+        case UP:    return point{0, 1};
+        case DOWN:  return point{0, -1};
+        case LEFT:  return point{-1, 0};
+        case RIGHT: return point{1, 0};
     }
 }
 
-void Snake::drawHead(Texture2D headTexture)
+float Snake::directionAngle() const
 {
-    if (this->direction.x == 1)
-    {
-        DrawTextureEx(headTexture, Vector2{(float)this->body[0].x * 16 + 16, (float)this->body[0].y * 16 + 16}, 180.0, 1.0, WHITE);
+    float ang = 0.0f;
+    switch (mDirection) { // 😈😈😈
+        case UP:    ang += 90.0f;
+        case RIGHT: ang += 90.0f;
+        case DOWN:  ang += 90.0f;
+        case LEFT:  ang += 0.f;
     }
-    else if (this->direction.x == -1)
-    {
-        DrawTextureEx(headTexture, Vector2{(float)this->body[0].x * 16, (float)this->body[0].y * 16}, 0.0, 1.0, WHITE);
-    }
-    else if (this->direction.y == 1)
-    {
-        DrawTextureEx(headTexture, Vector2{(float)this->body[0].x * 16, (float)this->body[0].y * 16 + 16}, 270.0, 1.0, WHITE);
-    }
-    else
-    {
-        DrawTextureEx(headTexture, Vector2{(float)this->body[0].x * 16 + 16, (float)this->body[0].y * 16}, 90.0, 1.0, WHITE);
-    }
-}
-
-void Snake::setDirection(point p)
-{
-    this->direction = p;
+    return ang;
 }
 
 void Snake::update()
 {
-    for (int i = (this->length) - 1; i > 0; i--)
-    {
-        this->body[i] = this->body[i - 1];
+    for (int i = mBody.size() - 1; i > 0; i--) {
+        mBody[i] = mBody[i - 1];
     }
 
-    this->body[0].x = (this->body[0].x + this->direction.x) % 50;
-    this->body[0].y = (this->body[0].y + this->direction.y) % 30;
+    point &head = mBody.front();
+    point dir = directionVector();
 
-    if (this->body[0].x < 0)
-    {
-        this->body[0].x = 49;
-    }
-    if (this->body[0].y < 0)
-    {
-        this->body[0].y = 29;
-    }
+    head.x += dir.x % levelWidth;
+    head.y += dir.y % levelHeight;
+
+    if (head.x < 0) head.x = levelWidth - 1;
+    if (head.y < 0) head.y = levelHeight - 1;
 }
 
-bool Snake::isSelfCollided()
+bool Snake::isSelfCollided() const
 {
-    point head = this->body[0];
-    for (int i = 1; i < this->length; i++)
-    {
-        if (this->body[i].x == head.x && this->body[i].y == head.y)
-        {
+    const point &head = mBody.front();
+    for (size_t i = 1; i < mBody.size(); i++) {
+        if (head == mBody[i]) {
             return true;
         }
     }
     return false;
 }
 
-bool Snake::hasToEatApple(Apple *apple)
+bool Snake::hasToEatApple(const Apple &apple) const
 {
-    if (this->body[0].x == apple->x && this->body[0].y == apple->y)
-    {
-        return true;
-    }
-    return false;
+    return mBody.front() == apple.position();
 }
 
-void Snake::eat(Apple *apple)
+void Snake::eat(Apple &apple)
 {
-    this->grow(apple->getPosition());
-    apple->remove();
+    grow(apple.position());
+    apple.reset();
 }
 
-void Snake::changeDirection(point p)
+const point &Snake::head() const
 {
-    if (p.y != 0)
-    {
-        if (this->direction.y == 0)
-        {
-            this->direction = point{0, p.y};
-        }
-    }
-    else if (p.x != 0)
-    {
-        if (this->direction.x == 0)
-        {
-            this->direction = point{p.x, 0};
-        }
-    }
+    return mBody.front();
 }
 
-point Snake::getHead()
+const point &Snake::tail() const
 {
-    return this->body[0];
-}
-
-point Snake::getTail()
-{
-    return this->body[this->length - 1];
+    return mBody.back();
 }

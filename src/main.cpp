@@ -1,22 +1,19 @@
-#include "main.hpp"
-
-#define SCREEN_WIDTH (800)
-#define SCREEN_HEIGHT (496)
+#include "Common.hpp"
+#include "Engine.hpp"
 
 #define WINDOW_TITLE "My awesome snake"
 
 int main()
 {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, WINDOW_TITLE);
-    Engine *engine = new Engine();
+    InitWindow(screenWidth, screenHeight, WINDOW_TITLE);
+    Engine engine;
 
     SetTargetFPS(60);
 
-    while (!WindowShouldClose())
-    {
-        engine->handleKeypress();
-        engine->update();
-        engine->render();
+    while (!WindowShouldClose()) {
+        engine.handleInput();
+        engine.update();
+        engine.render();
     }
 
     return 0;
